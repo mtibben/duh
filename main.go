@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/karrick/godirwalk"
 	"github.com/pivotal-golang/bytefmt"
 	"github.com/wsxiaoys/terminal"
 )
@@ -83,7 +84,13 @@ func printHistogram(node *Node) {
 	printTotals()
 }
 
-func addFile(path string, filesize int64) {
+func addFile(path string) {
+	fi, err := os.Lstat(path)
+	if err != nil {
+		return
+	}
+	filesize := fi.Size()
+
 	files++
 
 	relpath, _ := filepath.Rel(rootnode.name, path)
@@ -102,14 +109,6 @@ func addFile(path string, filesize int64) {
 	}
 }
 
-func addFileInfoToTree(path string, info os.FileInfo, err error) error {
-	if !info.IsDir() {
-		addFile(path, info.Size())
-	}
-
-	return nil
-}
-
 func isDir(dir string) bool {
 	fi, _ := os.Stat(dir)
 	return fi.IsDir()
@@ -121,7 +120,15 @@ func walkPathAndPrintResults(rootpath string) {
 	rootnode = NewNode(rootpath)
 
 	go func() {
-		filepath.Walk(rootpath, addFileInfoToTree)
+		godirwalk.Walk(rootpath, &godirwalk.Options{
+			Unsorted: true,
+			Callback: func(path string, de *godirwalk.Dirent) error {
+				if de.ModeType().IsRegular() {
+					addFile(path)
+				}
+				return nil
+			},
+		})
 		doneChan <- true
 	}()
 
