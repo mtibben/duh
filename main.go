@@ -12,7 +12,7 @@ import (
 
 	"github.com/karrick/godirwalk"
 	"github.com/pivotal-golang/bytefmt"
-	"github.com/wsxiaoys/terminal"
+	terminal "github.com/wayneashleyberry/terminal-dimensions"
 )
 
 type Node struct {
@@ -49,36 +49,48 @@ func (mp nodemap) slice() nodes {
 }
 
 var rootnode *Node
-var lines = 0
-var files = 0
+var lines int
+var files int
 
 func strhashsForPct(a, b int64) string {
 	t := math.Ceil((float64(a) / float64(b)) * 20)
 	return strings.Repeat("#", int(t))
 }
 
-func clearOutput() {
-	for i := 0; i < lines; i++ {
-		terminal.Stdout.Up(1)
-		terminal.Stdout.ClearLine()
-	}
+const ansiClearLine = "\033[2K"
+const ansiCursorUp = "\033[%dA"
+
+func clearOutput(l int) {
+	fmt.Printf(ansiCursorUp, lines)
 	lines = 0
 }
+
 func printNode(node *Node, tot int64) {
-	terminal.Stdout.Print(fmt.Sprintf("%21s %8s   %s\n", strhashsForPct(node.size, tot), bytefmt.ByteSize(uint64(node.size)), node.name))
+	fmt.Printf("%s%21s %8s   %s\n", ansiClearLine, strhashsForPct(node.size, tot), bytefmt.ByteSize(uint64(node.size)), node.name)
 	lines++
 }
+
 func printTotals() {
-	terminal.Stdout.Print(fmt.Sprintf("%21s %8s   (%d files)\n", "TOTAL:", bytefmt.ByteSize(uint64(rootnode.size)), files))
+	fmt.Printf("%s%21s %8s   (%d files)\n", ansiClearLine, "TOTAL:", bytefmt.ByteSize(uint64(rootnode.size)), files)
 	lines++
 }
+
 func printHistogram(node *Node) {
 	nodeSlice := node.children.slice()
 	sort.Sort(BySize{nodeSlice})
 	largestSize := nodeSlice[len(nodeSlice)-1].size
 
-	clearOutput()
-	for _, n := range nodeSlice {
+	termHeight, _ := terminal.Height()
+
+	startNode := len(nodeSlice) - int(termHeight) + 3
+	if startNode <= 0 || termHeight <= 0 {
+		startNode = 0
+	}
+	totalLines := len(nodeSlice) - startNode
+
+	clearOutput(totalLines)
+
+	for _, n := range nodeSlice[startNode:] {
 		printNode(n, largestSize)
 	}
 	printTotals()
