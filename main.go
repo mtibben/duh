@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"code.cloudfoundry.org/bytefmt"
 	"github.com/karrick/godirwalk"
-	"github.com/pivotal-golang/bytefmt"
 	terminal "github.com/wayneashleyberry/terminal-dimensions"
 )
 
